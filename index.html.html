@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0A1628">
+<title>Checador — Procepal</title>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  :root {
+    --bg: #0A1628; --surface: #112240; --border: #1E3A5F;
+    --accent: #5BC4C0; --text: #E8F4F8; --muted: #8BBFD4; --dim: #5A8FA8;
+    --success: #5BC4C0; --danger: #EF4444; --warning: #F0A500;
+    color-scheme: dark;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Barlow', sans-serif; overflow: hidden; }
+  #app { height: 100vh; height: 100dvh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+
+  /* LOGIN */
+  #login-view { width: 100%; max-width: 340px; text-align: center; }
+  .logo-area { margin-bottom: 32px; }
+  .logo-area .icon { font-size: 48px; margin-bottom: 8px; }
+  .logo-area .title { font-size: 24px; font-weight: 800; color: var(--accent); letter-spacing: 2px; }
+  .logo-area .sub { font-size: 12px; color: var(--dim); margin-top: 4px; }
+  .pin-display { display: flex; justify-content: center; gap: 12px; margin: 24px 0 8px; }
+  .pin-dot { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--border); background: transparent; transition: all 0.2s; }
+  .pin-dot.filled { background: var(--accent); border-color: var(--accent); }
+  .pin-label { font-size: 13px; color: var(--dim); margin-bottom: 20px; }
+  .numpad { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; max-width: 280px; margin: 0 auto; }
+  .num-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 18px; font-size: 22px; font-weight: 700; color: var(--text); cursor: pointer; font-family: 'Barlow', sans-serif; transition: all 0.1s; }
+  .num-btn:active { background: var(--accent); color: #0A1628; transform: scale(0.95); }
+  .num-btn.del { font-size: 18px; color: var(--dim); }
+  .num-btn.empty { background: transparent; border: none; cursor: default; }
+  #login-error { font-size: 12px; color: var(--danger); margin-top: 12px; min-height: 18px; }
+
+  /* MAIN VIEW */
+  #main-view { width: 100%; max-width: 380px; display: none; flex-direction: column; height: 100%; padding: 20px 0; overflow-y: auto; }
+  .worker-header { text-align: center; margin-bottom: 20px; }
+  .worker-name { font-size: 22px; font-weight: 800; color: var(--text); }
+  .worker-obra { font-size: 13px; color: var(--dim); margin-top: 4px; }
+  .worker-date { font-size: 12px; color: var(--accent); margin-top: 6px; font-weight: 600; }
+
+  .clock { text-align: center; margin-bottom: 24px; }
+  .clock-time { font-size: 52px; font-weight: 800; color: var(--accent); letter-spacing: 2px; line-height: 1; }
+  .clock-date { font-size: 13px; color: var(--dim); margin-top: 6px; }
+
+  .status-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+  .status-label { font-size: 10px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .status-row { display: flex; justify-content: space-between; align-items: center; }
+  .status-item { text-align: center; flex: 1; }
+  .status-item .val { font-size: 16px; font-weight: 800; color: var(--text); }
+  .status-item .lbl { font-size: 10px; color: var(--dim); margin-top: 2px; }
+  .status-divider { width: 1px; background: var(--border); height: 36px; }
+
+  .check-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .check-btn { border: none; border-radius: 14px; padding: 20px 12px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: 'Barlow', sans-serif; display: flex; flex-direction: column; align-items: center; gap: 8px; transition: all 0.15s; }
+  .check-btn:active { transform: scale(0.96); opacity: 0.85; }
+  .check-btn .btn-icon { font-size: 28px; }
+  .check-btn.entrada  { background: #5BC4C022; border: 2px solid #5BC4C0; color: #5BC4C0; }
+  .check-btn.salida   { background: #EF444422; border: 2px solid #EF4444; color: #EF4444; }
+  .check-btn.descanso { background: #F0A50022; border: 2px solid #F0A500; color: #F0A500; }
+  .check-btn.extra    { background: #3B9EBF22; border: 2px solid #3B9EBF; color: #3B9EBF; }
+  .check-btn.disabled { opacity: 0.3; pointer-events: none; }
+
+  .historial { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+  .hist-title { font-size: 11px; font-weight: 700; color: var(--dim); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 12px; }
+  .hist-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .hist-row:last-child { border-bottom: none; padding-bottom: 0; }
+  .hist-tipo { font-size: 13px; font-weight: 700; }
+  .hist-hora { font-size: 12px; color: var(--dim); }
+  .hist-loc  { font-size: 10px; color: var(--dim); }
+
+  .logout-btn { background: none; border: 1px solid var(--border); border-radius: 10px; padding: 10px; font-size: 12px; color: var(--dim); cursor: pointer; font-family: 'Barlow', sans-serif; width: 100%; margin-top: 8px; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: #1E3A5F; color: var(--text); padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; z-index: 99; border: 1px solid var(--border); }
+  .toast.show { opacity: 1; }
+  .toast.error { background: #EF444422; border-color: #EF4444; color: #EF4444; }
+
+  .loading-overlay { position: fixed; inset: 0; background: var(--bg); z-index: 50; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 12px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- LOADING -->
+  <div class="loading-overlay" id="loading-overlay">
+    <div class="spinner"></div>
+    <div style="font-size:13px;color:var(--dim)">Cargando...</div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="login-view" style="display:none">
+    <div class="logo-area">
+      <div class="icon">⬡</div>
+      <div class="title">PROCEPAL</div>
+      <div class="sub">Checador Digital</div>
+    </div>
+    <div class="pin-display">
+      <div class="pin-dot" id="dot-0"></div>
+      <div class="pin-dot" id="dot-1"></div>
+      <div class="pin-dot" id="dot-2"></div>
+      <div class="pin-dot" id="dot-3"></div>
+    </div>
+    <div class="pin-label">Ingresa tu PIN de 4 dígitos</div>
+    <div class="numpad">
+      <button class="num-btn" onclick="pinPress('1')">1</button>
+      <button class="num-btn" onclick="pinPress('2')">2</button>
+      <button class="num-btn" onclick="pinPress('3')">3</button>
+      <button class="num-btn" onclick="pinPress('4')">4</button>
+      <button class="num-btn" onclick="pinPress('5')">5</button>
+      <button class="num-btn" onclick="pinPress('6')">6</button>
+      <button class="num-btn" onclick="pinPress('7')">7</button>
+      <button class="num-btn" onclick="pinPress('8')">8</button>
+      <button class="num-btn" onclick="pinPress('9')">9</button>
+      <button class="num-btn empty"></button>
+      <button class="num-btn" onclick="pinPress('0')">0</button>
+      <button class="num-btn del" onclick="pinDel()">⌫</button>
+    </div>
+    <div id="login-error"></div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-view">
+    <div class="worker-header">
+      <div class="worker-name" id="w-nombre">—</div>
+      <div class="worker-obra" id="w-obra">—</div>
+      <div class="worker-date" id="w-fecha">—</div>
+    </div>
+
+    <div class="clock">
+      <div class="clock-time" id="clock-time">00:00:00</div>
+      <div class="clock-date" id="clock-date">—</div>
+    </div>
+
+    <div class="status-card">
+      <div class="status-label">Hoy</div>
+      <div class="status-row">
+        <div class="status-item"><div class="val" id="st-entrada">—</div><div class="lbl">Entrada</div></div>
+        <div class="status-divider"></div>
+        <div class="status-item"><div class="val" id="st-salida">—</div><div class="lbl">Salida</div></div>
+        <div class="status-divider"></div>
+        <div class="status-item"><div class="val" id="st-horas">0h</div><div class="lbl">Horas</div></div>
+        <div class="status-divider"></div>
+        <div class="status-item"><div class="val" id="st-extra">0h</div><div class="lbl">Extra</div></div>
+      </div>
+    </div>
+
+    <div class="check-btns">
+      <button class="check-btn entrada"  id="btn-entrada"  onclick="registrar('entrada')">
+        <span class="btn-icon">🟢</span>Entrada
+      </button>
+      <button class="check-btn salida"   id="btn-salida"   onclick="registrar('salida')">
+        <span class="btn-icon">🔴</span>Salida
+      </button>
+      <button class="check-btn descanso" id="btn-descanso" onclick="registrar('descanso')">
+        <span class="btn-icon">☕</span>Descanso
+      </button>
+      <button class="check-btn extra"    id="btn-extra"    onclick="registrar('extra')">
+        <span class="btn-icon">⏱</span>Hora extra
+      </button>
+    </div>
+
+    <div class="historial" id="historial-box">
+      <div class="hist-title">Registros de hoy</div>
+      <div id="historial-list"><div style="font-size:12px;color:var(--dim)">Sin registros hoy</div></div>
+    </div>
+
+    <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+  </div>
+
+</div>
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://pviiuaukqvrdyttwulcw.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InB2aWl1YXVrcXZyZHl0dHd1bGN3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk0OTU0MzMsImV4cCI6MjA5NTA3MTQzM30.mKJ2z17zBkz0zc18itgEnJAk8ZuQ6nT3PlAvXyYRip8';
+
+async function db(method, path, body) {
+  const headers = { 'apikey': SUPABASE_KEY, 'Authorization': `Bearer ${SUPABASE_KEY}`, 'Content-Type': 'application/json', 'Prefer': 'return=representation' };
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const text = await res.text();
+  if (!res.ok) throw new Error(text);
+  return text ? JSON.parse(text) : null;
+}
+
+function showToast(msg, error=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show' + (error?' error':'');
+  setTimeout(()=>t.className='toast', 2800);
+}
+
+// ── PIN ──────────────────────────────────────────────
+let pin = '';
+let currentWorker = null;
+let obrasData = [];
+let hoyRegistros = [];
+
+function pinPress(d) {
+  if(pin.length >= 4) return;
+  pin += d;
+  updateDots();
+  if(pin.length === 4) setTimeout(verificarPin, 150);
+}
+
+function pinDel() {
+  pin = pin.slice(0, -1);
+  updateDots();
+  document.getElementById('login-error').textContent = '';
+}
+
+function updateDots() {
+  for(let i=0;i<4;i++) {
+    document.getElementById('dot-'+i).className = 'pin-dot' + (i < pin.length ? ' filled' : '');
+  }
+}
+
+async function verificarPin() {
+  try {
+    const workers = await db('GET', `trabajadores?pin_checador=eq.${pin}&activo=eq.true`);
+    if(!workers || !workers.length) {
+      document.getElementById('login-error').textContent = 'PIN incorrecto';
+      pin = ''; updateDots(); return;
+    }
+    currentWorker = workers[0];
+    obrasData = await db('GET','obras?order=nombre') || [];
+    await mostrarMain();
+  } catch(e) {
+    document.getElementById('login-error').textContent = 'Error de conexión';
+    pin = ''; updateDots();
+  }
+}
+
+function logout() {
+  currentWorker = null;
+  pin = ''; updateDots();
+  document.getElementById('login-error').textContent = '';
+  document.getElementById('main-view').style.display = 'none';
+  document.getElementById('login-view').style.display = 'block';
+}
+
+// ── MAIN ─────────────────────────────────────────────
+async function mostrarMain() {
+  const w = currentWorker;
+  const obra = w.todos_proyectos ? 'Todos los proyectos' : (obrasData.find(o=>o.id===w.obra_id)?.nombre || '—');
+  document.getElementById('w-nombre').textContent = w.nombre;
+  document.getElementById('w-obra').textContent = w.puesto ? `${w.puesto} · ${obra}` : obra;
+
+  await cargarHoy();
+
+  document.getElementById('login-view').style.display = 'none';
+  document.getElementById('main-view').style.display = 'flex';
+  document.getElementById('main-view').style.flexDirection = 'column';
+}
+
+async function cargarHoy() {
+  const hoy = new Date().toISOString().slice(0,10);
+  try {
+    hoyRegistros = await db('GET', `asistencias?trabajador_id=eq.${currentWorker.id}&fecha=eq.${hoy}&order=created_at.asc`) || [];
+  } catch(e) { hoyRegistros = []; }
+  renderEstado();
+  renderHistorial();
+  actualizarBotones();
+}
+
+function renderEstado() {
+  const entrada = hoyRegistros.find(r=>r.tipo==='entrada');
+  const salida  = hoyRegistros.find(r=>r.tipo==='salida');
+  const extras  = hoyRegistros.filter(r=>r.tipo==='extra');
+
+  document.getElementById('st-entrada').textContent = entrada ? entrada.hora.slice(0,5) : '—';
+  document.getElementById('st-salida').textContent  = salida  ? salida.hora.slice(0,5)  : '—';
+
+  // Calcular horas trabajadas
+  let horas = 0;
+  if(entrada && salida) {
+    const [eh, em] = entrada.hora.split(':').map(Number);
+    const [sh, sm] = salida.hora.split(':').map(Number);
+    horas = Math.max(0, ((sh*60+sm) - (eh*60+em)) / 60);
+  }
+  document.getElementById('st-horas').textContent = horas > 0 ? horas.toFixed(1)+'h' : '0h';
+  document.getElementById('st-extra').textContent = extras.length + 'h';
+}
+
+function renderHistorial() {
+  const tipoIcon = { entrada:'🟢', salida:'🔴', descanso:'☕', extra:'⏱' };
+  const tipoColor = { entrada:'#5BC4C0', salida:'#EF4444', descanso:'#F0A500', extra:'#3B9EBF' };
+  const el = document.getElementById('historial-list');
+  if(!hoyRegistros.length) {
+    el.innerHTML = '<div style="font-size:12px;color:var(--dim)">Sin registros hoy</div>';
+    return;
+  }
+  el.innerHTML = [...hoyRegistros].reverse().map(r => `
+    <div class="hist-row">
+      <div>
+        <div class="hist-tipo" style="color:${tipoColor[r.tipo]||'var(--text)'}">
+          ${tipoIcon[r.tipo]||'•'} ${r.tipo.charAt(0).toUpperCase()+r.tipo.slice(1)}
+        </div>
+        ${r.lat ? `<div class="hist-loc">📍 ${parseFloat(r.lat).toFixed(4)}, ${parseFloat(r.lng).toFixed(4)}</div>` : ''}
+      </div>
+      <div class="hist-hora">${r.hora.slice(0,5)}</div>
+    </div>`).join('');
+}
+
+function actualizarBotones() {
+  const tieneEntrada  = hoyRegistros.some(r=>r.tipo==='entrada');
+  const tieneSalida   = hoyRegistros.some(r=>r.tipo==='salida');
+  const enDescanso    = hoyRegistros.filter(r=>r.tipo==='descanso').length % 2 === 1;
+
+  document.getElementById('btn-entrada').className  = 'check-btn entrada'  + (tieneEntrada ? ' disabled' : '');
+  document.getElementById('btn-salida').className   = 'check-btn salida'   + (!tieneEntrada || tieneSalida ? ' disabled' : '');
+  document.getElementById('btn-descanso').className = 'check-btn descanso' + (!tieneEntrada || tieneSalida ? ' disabled' : '');
+  document.getElementById('btn-extra').className    = 'check-btn extra'    + (!tieneEntrada || tieneSalida ? ' disabled' : '');
+
+  // Change descanso label if active
+  document.getElementById('btn-descanso').innerHTML = `<span class="btn-icon">${enDescanso?'▶':'☕'}</span>${enDescanso?'Fin descanso':'Descanso'}`;
+}
+
+async function registrar(tipo) {
+  const ahora = new Date();
+  const hora  = ahora.toTimeString().slice(0,8);
+  const fecha = ahora.toISOString().slice(0,10);
+
+  // Get GPS
+  let lat = null, lng = null;
+  try {
+    const pos = await new Promise((res,rej) => navigator.geolocation.getCurrentPosition(res, rej, {timeout:5000}));
+    lat = pos.coords.latitude;
+    lng = pos.coords.longitude;
+  } catch(e) {}
+
+  try {
+    await db('POST','asistencias',{
+      trabajador_id: currentWorker.id,
+      obra_id: currentWorker.todos_proyectos ? null : currentWorker.obra_id,
+      tipo, fecha, hora, lat, lng
+    });
+    const tipoLabel = { entrada:'✅ Entrada registrada', salida:'🔴 Salida registrada', descanso:'☕ Descanso registrado', extra:'⏱ Hora extra registrada' };
+    showToast(tipoLabel[tipo] || 'Registrado');
+    await cargarHoy();
+  } catch(e) {
+    showToast('Error al registrar', true);
+  }
+}
+
+// ── RELOJ ─────────────────────────────────────────────
+function tickClock() {
+  const ahora = new Date();
+  const h = String(ahora.getHours()).padStart(2,'0');
+  const m = String(ahora.getMinutes()).padStart(2,'0');
+  const s = String(ahora.getSeconds()).padStart(2,'0');
+  document.getElementById('clock-time').textContent = `${h}:${m}:${s}`;
+  const dias = ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+  const meses = ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
+  document.getElementById('clock-date').textContent = `${dias[ahora.getDay()]}, ${ahora.getDate()} ${meses[ahora.getMonth()]} ${ahora.getFullYear()}`;
+  document.getElementById('w-fecha').textContent = `${dias[ahora.getDay()]}, ${ahora.getDate()} ${meses[ahora.getMonth()]}`;
+}
+setInterval(tickClock, 1000);
+tickClock();
+
+// ── INIT ─────────────────────────────────────────────
+document.getElementById('loading-overlay').style.display = 'none';
+document.getElementById('login-view').style.display = 'block';
+</script>
+</body>
+</html>
