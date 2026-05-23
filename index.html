@@ -307,8 +307,8 @@ async function iniciarRegistro(tipo) {
     });
     document.getElementById('video').srcObject = videoStream;
   } catch(e) {
-    showToast('Sin acceso a cámara — registrando sin foto', false);
-    await registrar(tipo, null);
+    showToast('⚠️ Se requiere acceso a la cámara para checar', true);
+    pendingTipo = null;
     return;
   }
 
