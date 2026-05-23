@@ -184,15 +184,16 @@
         <div class="status-item"><div class="val" id="st-salida">—</div><div class="lbl">Salida</div></div>
         <div class="status-divider"></div>
         <div class="status-item"><div class="val" id="st-horas">0h</div><div class="lbl">Horas</div></div>
-        <div class="status-divider"></div>
-        <div class="status-item"><div class="val" id="st-extra">0h</div><div class="lbl">Extra</div></div>
+
       </div>
     </div>
-    <div class="check-btns">
-      <button class="check-btn entrada"  id="btn-entrada"  onclick="iniciarRegistro('entrada')"><span class="btn-icon">🟢</span>Entrada</button>
-      <button class="check-btn salida"   id="btn-salida"   onclick="iniciarRegistro('salida')"><span class="btn-icon">🔴</span>Salida</button>
-      <button class="check-btn descanso" id="btn-descanso" onclick="iniciarRegistro('descanso')"><span class="btn-icon">☕</span>Descanso</button>
-      <button class="check-btn extra"    id="btn-extra"    onclick="iniciarRegistro('extra')"><span class="btn-icon">⏱</span>Hora extra</button>
+    <div style="display:flex;gap:16px;margin-bottom:16px">
+      <button class="check-btn entrada" id="btn-entrada" onclick="iniciarRegistro('entrada')" style="flex:1;padding:28px 12px">
+        <span class="btn-icon">🟢</span>Entrada
+      </button>
+      <button class="check-btn salida" id="btn-salida" onclick="iniciarRegistro('salida')" style="flex:1;padding:28px 12px">
+        <span class="btn-icon">🔴</span>Salida
+      </button>
     </div>
     <div class="historial">
       <div class="hist-title">Registros de hoy</div>
@@ -416,7 +417,7 @@ async function cargarHoy() {
 function renderEstado() {
   const entrada = hoyRegistros.find(r=>r.tipo==='entrada');
   const salida  = hoyRegistros.find(r=>r.tipo==='salida');
-  const extras  = hoyRegistros.filter(r=>r.tipo==='extra');
+
   document.getElementById('st-entrada').textContent = entrada ? entrada.hora.slice(0,5) : '—';
   document.getElementById('st-salida').textContent  = salida  ? salida.hora.slice(0,5)  : '—';
   let horas = 0;
@@ -426,7 +427,7 @@ function renderEstado() {
     horas = Math.max(0,((sh*60+sm)-(eh*60+em))/60);
   }
   document.getElementById('st-horas').textContent = horas > 0 ? horas.toFixed(1)+'h' : '0h';
-  document.getElementById('st-extra').textContent = extras.length + 'h';
+
 }
 
 function renderHistorial() {
@@ -453,12 +454,8 @@ function renderHistorial() {
 function actualizarBotones() {
   const tieneEntrada = hoyRegistros.some(r=>r.tipo==='entrada');
   const tieneSalida  = hoyRegistros.some(r=>r.tipo==='salida');
-  const enDescanso   = hoyRegistros.filter(r=>r.tipo==='descanso').length % 2 === 1;
-  document.getElementById('btn-entrada').className  = 'check-btn entrada'  + (tieneEntrada ? ' disabled' : '');
-  document.getElementById('btn-salida').className   = 'check-btn salida'   + (!tieneEntrada || tieneSalida ? ' disabled' : '');
-  document.getElementById('btn-descanso').className = 'check-btn descanso' + (!tieneEntrada || tieneSalida ? ' disabled' : '');
-  document.getElementById('btn-extra').className    = 'check-btn extra'    + (!tieneEntrada || tieneSalida ? ' disabled' : '');
-  document.getElementById('btn-descanso').innerHTML = `<span class="btn-icon">${enDescanso?'▶':'☕'}</span>${enDescanso?'Fin descanso':'Descanso'}`;
+  document.getElementById('btn-entrada').className = 'check-btn entrada' + (tieneEntrada ? ' disabled' : '');
+  document.getElementById('btn-salida').className  = 'check-btn salida'  + (!tieneEntrada || tieneSalida ? ' disabled' : '');
 }
 
 // ── RELOJ ─────────────────────────────────────────────
