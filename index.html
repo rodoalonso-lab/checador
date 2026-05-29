@@ -4,12 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Checador">
-<meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#0A1628">
-<link rel="manifest" href="manifest.json">
-<link rel="apple-touch-icon" href="icon-192.png">
 <title>Checador — Procepal</title>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;600;700;800&display=swap" rel="stylesheet">
 <style>
@@ -428,8 +423,7 @@ async function registrar(tipo, foto) {
     document.getElementById('main-view').style.display = 'flex';
     await cargarHoy();
     setTimeout(function(){
-      // Show countdown message
-      let secs = 4;
+      let secs = 8;
       const interval = setInterval(function(){
         secs--;
         const toast = document.getElementById('toast');
@@ -461,9 +455,10 @@ async function mostrarMain() {
 }
 
 async function cargarHoy() {
+  // Use device date but validate against reasonable range
   const hoy = new Date().toISOString().slice(0,10);
   try {
-    hoyRegistros = await db('GET', `asistencias?trabajador_id=eq.${currentWorker.id}&fecha=eq.${hoy}&order=created_at.asc`) || [];
+    hoyRegistros = await db('GET', `asistencias?trabajador_id=eq.${currentWorker.id}&fecha=eq.${hoy}&order=hora.asc`) || [];
   } catch(e) { hoyRegistros = []; }
   renderEstado();
   renderHistorial();
@@ -479,19 +474,30 @@ async function cargarHoy() {
 }
 
 function renderEstado() {
-  const entrada = hoyRegistros.find(r=>r.tipo==='entrada');
-  const salida  = hoyRegistros.find(r=>r.tipo==='salida');
+  const entradas = hoyRegistros.filter(r => r.tipo === 'entrada');
+  const salidas  = hoyRegistros.filter(r => r.tipo === 'salida');
+  const primeraEntrada = entradas[0];
+  const ultimaSalida  = salidas[salidas.length - 1];
 
-  document.getElementById('st-entrada').textContent = entrada ? entrada.hora.slice(0,5) : '—';
-  document.getElementById('st-salida').textContent  = salida  ? salida.hora.slice(0,5)  : '—';
-  let horas = 0;
-  if(entrada && salida) {
-    const [eh,em] = entrada.hora.split(':').map(Number);
-    const [sh,sm] = salida.hora.split(':').map(Number);
-    horas = Math.max(0,((sh*60+sm)-(eh*60+em))/60);
+  document.getElementById('st-entrada').textContent = primeraEntrada ? primeraEntrada.hora.slice(0,5) : '—';
+  document.getElementById('st-salida').textContent  = ultimaSalida   ? ultimaSalida.hora.slice(0,5)   : '—';
+
+  // Calculate total worked hours from pairs
+  let totalMins = 0;
+  let ei = 0;
+  for(let i = 0; i < hoyRegistros.length - 1; i++) {
+    const r = hoyRegistros[i];
+    const next = hoyRegistros[i+1];
+    if(r.tipo === 'entrada' && next.tipo === 'salida') {
+      const [eh, em] = r.hora.split(':').map(Number);
+      const [sh, sm] = next.hora.split(':').map(Number);
+      let mins = (sh*60+sm) - (eh*60+em);
+      if(mins < 0) mins += 24*60; // Overnight shift
+      totalMins += mins;
+    }
   }
+  const horas = totalMins / 60;
   document.getElementById('st-horas').textContent = horas > 0 ? horas.toFixed(1)+'h' : '0h';
-
 }
 
 function renderHistorial() {
@@ -516,28 +522,40 @@ function renderHistorial() {
 }
 
 function actualizarBotones() {
+  // Get last registro tipo to determine what's allowed next
+  const ultimo = hoyRegistros.length ? hoyRegistros[hoyRegistros.length - 1] : null;
   const tieneEntrada = hoyRegistros.some(r => r.tipo === 'entrada');
-  const tieneSalida  = hoyRegistros.some(r => r.tipo === 'salida');
+  const ultimoFueSalida = ultimo && ultimo.tipo === 'salida';
+  const ultimoFueEntrada = ultimo && ultimo.tipo === 'entrada';
 
-  // Entrada: deshabilitada si ya tiene entrada registrada hoy
-  const entradaDisabled = tieneEntrada;
-  // Salida: deshabilitada si NO tiene entrada, O si ya tiene salida
-  // Esto asegura que nunca se pueda checar salida sin haber checado entrada
-  const salidaDisabled = !tieneEntrada || tieneSalida;
+  // Entrada: disponible si no hay registros, o si el último fue salida (para registrar reentrada)
+  const entradaDisabled = ultimoFueEntrada;
+  // Salida: disponible solo si el último fue entrada
+  const salidaDisabled = !tieneEntrada || ultimoFueSalida || !ultimoFueEntrada;
 
   const btnEntrada = document.getElementById('btn-entrada');
   const btnSalida  = document.getElementById('btn-salida');
 
   btnEntrada.className = 'check-btn entrada' + (entradaDisabled ? ' disabled' : '');
   btnSalida.className  = 'check-btn salida'  + (salidaDisabled  ? ' disabled' : '');
-
-  // Tooltip visual para salida sin entrada
-  btnSalida.title = !tieneEntrada ? 'Debes registrar entrada primero' : '';
+  btnEntrada.disabled = entradaDisabled;
+  btnSalida.disabled  = salidaDisabled;
+  btnSalida.title = salidaDisabled && !tieneEntrada ? 'Debes registrar entrada primero' : '';
 }
 
 // ── ADMIN ─────────────────────────────────────────────
-const ADMIN_PIN = '0000'; // Cambia este PIN por el que quieras
 let adminUnlocked = false;
+let adminPin = '0000'; // fallback, will be loaded from Supabase
+
+async function loadAdminPin() {
+  try {
+    // Get admin PIN from perfiles where rol=admin
+    const admins = await db('GET', 'perfiles?rol=eq.admin&select=pin_app&limit=1');
+    if(admins && admins.length && admins[0].pin_app) {
+      adminPin = admins[0].pin_app.toString();
+    }
+  } catch(e) { /* use fallback */ }
+}
 
 function toggleAdminPanel() {
   const panel = document.getElementById('admin-panel');
@@ -559,7 +577,7 @@ function adminPinInput() {
   const val = document.getElementById('admin-pin-input').value;
   document.getElementById('admin-error').textContent = '';
   if (val.length === 4) {
-    if (val === ADMIN_PIN) {
+    if (val === adminPin) {
       adminUnlocked = true;
       document.getElementById('admin-login').style.display = 'none';
       document.getElementById('admin-records').style.display = 'block';
@@ -629,13 +647,7 @@ tickClock();
 // ── INIT ─────────────────────────────────────────────
 document.getElementById('loading-overlay').style.display = 'none';
 document.getElementById('login-view').style.display = 'block';
-
-// ── PWA SERVICE WORKER ───────────────────────────────
-if('serviceWorker' in navigator) {
-  window.addEventListener('load', function() {
-    navigator.serviceWorker.register('sw.js');
-  });
-}
+loadAdminPin(); // Load admin PIN from Supabase
 </script>
 </body>
 </html>
