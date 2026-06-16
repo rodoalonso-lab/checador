@@ -273,11 +273,12 @@ let pendingTipo = null;
 let capturedPhoto = null;
 let currentGPS = null;
 let videoStream = null;
+let _gpsWatchId = null;
 
 // ── GPS ───────────────────────────────────────────────
 function startGPS() {
   if(!navigator.geolocation) return;
-  navigator.geolocation.watchPosition(
+  _gpsWatchId = navigator.geolocation.watchPosition(
     pos => {
       currentGPS = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       document.getElementById('gps-dot').className = 'gps-dot ok';
@@ -289,6 +290,14 @@ function startGPS() {
     },
     { enableHighAccuracy: true, timeout: 10000 }
   );
+}
+
+function stopGPS() {
+  if(_gpsWatchId !== null && navigator.geolocation) {
+    navigator.geolocation.clearWatch(_gpsWatchId);
+    _gpsWatchId = null;
+  }
+  currentGPS = null;
 }
 
 // ── PIN ───────────────────────────────────────────────
@@ -327,6 +336,7 @@ async function verificarPin() {
 function logout() {
   currentWorker = null; pin = ''; pendingTipo = null; capturedPhoto = null;
   stopCamera();
+  stopGPS();
   updateDots();
   document.getElementById('login-error').textContent = '';
   document.getElementById('main-view').style.display = 'none';
